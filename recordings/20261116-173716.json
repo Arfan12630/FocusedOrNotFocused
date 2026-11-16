@@ -1,0 +1,179 @@
+{
+  "csv": "20261116-173716.csv",
+  "started_at": "2026-11-16T17:37:16-05:00",
+  "simulated": false,
+  "fs_hz": 250.0,
+  "units": "microvolts",
+  "columns": [
+    "sample_index",
+    "host_time_unix",
+    "pack_num",
+    "marker",
+    "Ch1",
+    "Ch2",
+    "Ch3",
+    "Ch4",
+    "Ch5",
+    "Ch6",
+    "Ch7",
+    "Ch8"
+  ],
+  "note": "Channel columns are microvolts, unfiltered (DC and mains included). host_time_unix is when the packet reached this computer, not the ADC sample time; samples inside one packet share it. sample_index counts samples since recording start.",
+  "channels": [
+    {
+      "num": 0,
+      "label": "Ch1",
+      "sdk_id": "EEGChIdUnknown",
+      "sdk_name": "Any"
+    },
+    {
+      "num": 1,
+      "label": "Ch2",
+      "sdk_id": "EEGChIdUnknown",
+      "sdk_name": "Any"
+    },
+    {
+      "num": 2,
+      "label": "Ch3",
+      "sdk_id": "EEGChIdUnknown",
+      "sdk_name": "Any"
+    },
+    {
+      "num": 3,
+      "label": "Ch4",
+      "sdk_id": "EEGChIdUnknown",
+      "sdk_name": "Any"
+    },
+    {
+      "num": 4,
+      "label": "Ch5",
+      "sdk_id": "EEGChIdUnknown",
+      "sdk_name": "Any"
+    },
+    {
+      "num": 5,
+      "label": "Ch6",
+      "sdk_id": "EEGChIdUnknown",
+      "sdk_name": "Any"
+    },
+    {
+      "num": 6,
+      "label": "Ch7",
+      "sdk_id": "EEGChIdUnknown",
+      "sdk_name": "Any"
+    },
+    {
+      "num": 7,
+      "label": "Ch8",
+      "sdk_id": "EEGChIdUnknown",
+      "sdk_name": "Any"
+    }
+  ],
+  "device": {
+    "device_name": "Flex8",
+    "address": "0ECEBB08-04EB-9135-F33F-368D5E090DBF",
+    "serial": "040800A1",
+    "family": "LEBrainBitFlex",
+    "model": 3,
+    "firmware": "1.10.0",
+    "hardware": "1.0.0",
+    "rssi": -51,
+    "amplifier_before": {
+      "ChSignalMode": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "ChResistUse": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "ChGain": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "Current": 1
+    },
+    "amplifier_after": {
+      "ChSignalMode": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "ChResistUse": [
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1
+      ],
+      "ChGain": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "Current": 1
+    },
+    "gain": 3
+  },
+  "display_filter": {
+    "bandpass_hz": [
+      1.0,
+      45.0
+    ],
+    "notch_hz": 60.0,
+    "applied_to_csv": false
+  },
+  "last_impedance_ohms_at_start": null,
+  "task": {
+    "name": "arithmetic_pilot",
+    "seed": 592067864,
+    "practice_trials": 3,
+    "measured_trials": 20,
+    "timeout_s": 12.0,
+    "alignment": "Host event and EEG arrival Unix timestamps; approximate, no hardware triggers. Onsets are GUI submission times, not measured screen presentation times.",
+    "labels": "Behavior only; no validated attention labels generated.",
+    "state": "complete",
+    "events_file": "20261116-173716.events.jsonl",
+    "answered_trials": 23,
+    "measured_answered": 20
+  },
+  "state": "complete",
+  "samples": 22060,
+  "duration_s": 88.156,
+  "stopped_at": "2026-11-16T17:38:44-05:00",
+  "lost_samples_estimate": 0,
+  "counter_resets": 0,
+  "measured_rate_hz": 251.16,
+  "last_impedance_ohms": null
+}

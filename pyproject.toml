@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brainviz"
+version = "0.1.0"
+description = "Real-time BrainBit Flex8 EEG visualizer (pyneurosdk2 + pyqtgraph)"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    # Pinned exactly: brainviz.amp_raw calls private wrapper internals (NativeBrainBit2AmplifierParam, _neuro_lib).
+    "pyneurosdk2==1.0.15",
+    "numpy>=2.1",
+    "scipy>=1.14",
+    "pyqtgraph>=0.13.7",
+    "PyQt6>=6.7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+brainviz = "brainviz.__main__:main"
+
+[tool.setuptools]
+packages = ["brainviz"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

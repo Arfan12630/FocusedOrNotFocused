@@ -221,3 +221,14 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# BrainBit local files
+.DS_Store
+logs/
+probe_logs/
+.smoke/
+.env.*
+!.env.example
+*.pem
+*.key
+# EEG recordings are intentionally versioned.
