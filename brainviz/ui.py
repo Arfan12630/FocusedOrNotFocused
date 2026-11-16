@@ -98,6 +98,7 @@ def apply_theme(app: QtWidgets.QApplication) -> None:
         (QtGui.QPalette.ColorRole.Window, PAGE), (QtGui.QPalette.ColorRole.Base, SURFACE),
         (QtGui.QPalette.ColorRole.AlternateBase, SURFACE), (QtGui.QPalette.ColorRole.Text, INK),
         (QtGui.QPalette.ColorRole.WindowText, INK), (QtGui.QPalette.ColorRole.ButtonText, INK),
+        (QtGui.QPalette.ColorRole.PlaceholderText, MUTED),
         (QtGui.QPalette.ColorRole.Button, "#262625"), (QtGui.QPalette.ColorRole.ToolTipBase, SURFACE),
         (QtGui.QPalette.ColorRole.ToolTipText, INK), (QtGui.QPalette.ColorRole.Highlight, "#2a78d6"),
         (QtGui.QPalette.ColorRole.HighlightedText, "#ffffff"),
@@ -199,11 +200,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.bridge = Bridge()
         self.recorder: Recorder | None = None
         self._task_dialog = None
+        self._attention_dialog = None
         self.status = Status(State.IDLE)
         self._prev_state = State.IDLE
         self._impedance_offered = False
         self._imp_dialog: ImpedanceDialog | None = None
         self._last_impedance: np.ndarray | None = None
+        self._last_impedance_time = 0.0
         self.tick_ms: collections.deque = collections.deque(maxlen=600)
 
         # per-channel display state (built in _setup_channels)
@@ -254,6 +257,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.btn_reconnect.clicked.connect(self._reconnect)
         self.btn_task = QtWidgets.QPushButton("Arithmetic…")
         self.btn_task.clicked.connect(self.open_arithmetic)
+        self.btn_attention = QtWidgets.QPushButton("Attention task…")
+        self.btn_attention.clicked.connect(self.open_attention)
+        self.btn_export = QtWidgets.QPushButton("Export session…")
+        self.btn_export.clicked.connect(self.export_attention)
         self.cmb_scale = QtWidgets.QComboBox()
         self.cmb_scale.addItems([f"±{s} µV" for s in SCALES_UV])
         self.cmb_scale.setCurrentIndex(2)
@@ -266,17 +273,20 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cmb_channel.currentIndexChanged.connect(self._on_channel_changed)
         self.chk_abs = QtWidgets.QCheckBox("Absolute µV²")
         self.chk_abs.toggled.connect(self._refresh_bands)
-        for w in (self.btn_record, self.btn_imp, self.btn_reconnect, self.btn_task):
+        for w in (self.btn_record, self.btn_imp, self.btn_reconnect, self.btn_task,
+                  self.btn_attention, self.btn_export):
             bar.addWidget(w)
-        bar.addSpacing(18)
+        bar.addStretch(1)
+        outer.addLayout(bar)
+        controls = QtWidgets.QHBoxLayout()
         for text, w in (("Scale", self.cmb_scale), ("Window", self.cmb_window), ("Channel", self.cmb_channel)):
             lbl = QtWidgets.QLabel(text)
             lbl.setStyleSheet(f"color: {INK2};")
-            bar.addWidget(lbl)
-            bar.addWidget(w)
-        bar.addWidget(self.chk_abs)
-        bar.addStretch(1)
-        outer.addLayout(bar)
+            controls.addWidget(lbl)
+            controls.addWidget(w)
+        controls.addWidget(self.chk_abs)
+        controls.addStretch(1)
+        outer.addLayout(controls)
 
         # traces
         self.trace_widget = pg.PlotWidget(background=SURFACE)
@@ -360,6 +370,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self, event) -> None:
         self.timer.stop()
+        if self._attention_dialog is not None:
+            self._attention_dialog.finish_session("aborted")
         if self._task_dialog is not None:
             self._task_dialog.finish_session("aborted")
         if self.recorder is not None:
@@ -427,20 +439,27 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _on_impedance(self, ohms) -> None:
         self._last_impedance = np.asarray(ohms, dtype=float)
+        self._last_impedance_time = time.perf_counter()
         if self._imp_dialog is not None:
             self._imp_dialog.update_values(self._last_impedance)
 
     def _update_buttons(self) -> None:
         streaming = self.status.state is State.STREAMING
         recording = self.recorder is not None
-        task_active = self._task_dialog is not None and self._task_dialog.active
+        attention_active = self._attention_dialog is not None and self._attention_dialog.active
+        task_active = (self._task_dialog is not None and self._task_dialog.active) or attention_active
         self.btn_record.setEnabled((streaming or recording) and not task_active)
         self.btn_imp.setEnabled(streaming and not recording)
         self.btn_reconnect.setEnabled(self.status.state in (State.DISCONNECTED, State.ERROR, State.IDLE))
-        self.btn_task.setEnabled(not recording or task_active)
+        self.btn_task.setEnabled((not recording or task_active) and not attention_active)
+        self.btn_attention.setEnabled(not recording and self._task_dialog is None)
+        self.btn_export.setEnabled(not recording)
 
     # -- actions -----------------------------------------------------------------------------------------
     def open_arithmetic(self) -> None:
+        if self._attention_dialog is not None:
+            self._attention_dialog.raise_()
+            return
         from .arithmetic import ArithmeticDialog
         if self._task_dialog is None:
             self._task_dialog = ArithmeticDialog(self)
@@ -452,6 +471,40 @@ class MainWindow(QtWidgets.QMainWindow):
     def _arithmetic_closed(self, _result) -> None:
         self._task_dialog = None
         self._update_buttons()
+
+    def open_attention(self) -> None:
+        from .attention import AttentionDialog
+        if self._task_dialog is not None or self.recorder is not None:
+            return
+        if self._attention_dialog is None:
+            self._attention_dialog = AttentionDialog(self, config=getattr(self, "attention_quality_config", None))
+            self._attention_dialog.finished.connect(self._attention_closed)
+        self._attention_dialog.show()
+        self._attention_dialog.raise_()
+        self._attention_dialog.activateWindow()
+
+    def _attention_closed(self, _result) -> None:
+        self._attention_dialog = None
+        self._update_buttons()
+
+    def export_attention(self) -> None:
+        from .attention_store import DATA_ROOT, export_session
+        if self.recorder is not None:
+            return
+        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select a saved attention session", str(DATA_ROOT))
+        if not folder:
+            return
+        export_dir = DATA_ROOT.parent / "exports"
+        export_dir.mkdir(parents=True, exist_ok=True)
+        destination, _ = QtWidgets.QFileDialog.getSaveFileName(self, "Export session ZIP",
+            str(export_dir / (Path(folder).name + ".zip")), "ZIP archives (*.zip)")
+        if not destination:
+            return
+        try:
+            path = export_session(folder, destination)
+            self.statusBar().showMessage(f"Exported locally to {path}", 10000)
+        except Exception as exc:
+            QtWidgets.QMessageBox.warning(self, "Export failed", str(exc))
 
     def _reconnect(self) -> None:
         self.source.reconnect()
@@ -476,13 +529,19 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self._stop_recording()
 
-    def _start_recording(self, task_meta: dict | None = None) -> None:
+    def _start_recording(self, task_meta: dict | None = None, out_dir=None, packet_timing=False,
+                         channel_indices=None) -> None:
         if self.hub.ring is None:
             self.btn_record.setChecked(False)
             return
+        indices = list(range(len(self.hub.channels))) if channel_indices is None else list(channel_indices)
+        if not indices or len(set(indices)) != len(indices) or any(i < 0 or i >= len(self.hub.channels) for i in indices):
+            raise ValueError("Select at least one available recording channel")
+        selected = [self.hub.channels[i] for i in indices]
         meta = {
             "channels": [{"num": c.num, "label": c.label, "sdk_id": c.sdk_id, "sdk_name": c.sdk_name}
-                         for c in self.hub.channels],
+                         for c in selected],
+            "source_channel_indices": indices,
             "device": self.source.info,
             "display_filter": {"bandpass_hz": [1.0, 45.0], "notch_hz": self.notch,
                                "applied_to_csv": False},
@@ -491,7 +550,9 @@ class MainWindow(QtWidgets.QMainWindow):
         }
         if task_meta:
             meta["task"] = task_meta
-        rec = Recorder(self.out_dir, self._labels, self.hub.fs, meta, simulated=self.source.simulated)
+        rec = Recorder(out_dir or self.out_dir, [c.label for c in selected], self.hub.fs, meta,
+                       simulated=self.source.simulated, packet_timing=packet_timing)
+        rec.channel_indices = indices
         path = rec.start()
         self.recorder = rec
         self.hub.recorder = rec
@@ -589,6 +650,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _tick(self) -> None:
         t_start = time.perf_counter()
+        if self._attention_dialog is not None and self._attention_dialog.active:
+            if t_start - self._last_info >= 1:
+                self._last_info = t_start
+                self._update_info()
+            return
         ring = self.hub.ring
         if ring is None or self._filter is None or self._disp is None or ring is not self._ring_id:
             return

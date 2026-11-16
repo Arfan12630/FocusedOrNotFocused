@@ -23,6 +23,7 @@ class RingBuffer:
         self._total = 0
         self._lock = threading.Lock()
 
+
     @property
     def total(self) -> int:
         with self._lock:
@@ -145,6 +146,7 @@ class DataHub:
         self.rate = RateMeter()
         self.stats = PacketStats()
         self.recorder = None
+        self.last_receipt = 0.0
         self._lock = threading.Lock()
 
     def configure(self, channels, fs: float) -> None:
@@ -158,12 +160,19 @@ class DataHub:
         self.stats.reset()
 
     def push(self, pack, marker, uv) -> None:
+        receipt, unix = time.perf_counter(), time.time()
         ring = self.ring
         if ring is None or uv.shape[1] != ring.n_ch:
             return
         ring.push(uv)
         self.rate.add(len(uv))
         self.stats.add(pack)
+        self.last_receipt = receipt
         rec = self.recorder
         if rec is not None:
-            rec.push(pack, marker, uv, time.time())
+            indices = getattr(rec, "channel_indices", None)
+            recorded_uv = uv if indices is None else uv[:, indices]
+            if getattr(rec, "packet_timing", False):
+                rec.push(pack, marker, recorded_uv, unix, receipt)
+            else:
+                rec.push(pack, marker, recorded_uv, unix)

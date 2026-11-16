@@ -231,4 +231,10 @@ probe_logs/
 !.env.example
 *.pem
 *.key
-# EEG recordings are intentionally versioned.
+# The previously approved arithmetic pilot remains versioned; new participant data stays local.
+
+.venv/
+*.py[cod]
+participant_data/
+exports/
+*.zip

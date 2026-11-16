@@ -13,6 +13,9 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--simulate", action="store_true",
                    help="generate fake EEG instead of connecting to the headset")
     p.add_argument("--arithmetic", action="store_true", help="open an arithmetic task with EEG recording")
+    p.add_argument("--gradcpt", action="store_true", help="open the local attention-task collection workflow")
+    p.add_argument("--record-channel", type=int, metavar="N", help="preselect one attention recording channel (1-based)")
+    p.add_argument("--quality-config", metavar="JSON", help="versioned provisional attention-quality settings")
     p.add_argument("--gain", choices=GAIN_CHOICES, default="3",
                    help="amplifier gain written to every channel (default 3; 'none' leaves the device as-is)")
     p.add_argument("--notch", type=float, default=60.0, metavar="HZ",
@@ -22,7 +25,20 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--skip-impedance", action="store_true", help="don't open the impedance check after connecting")
     p.add_argument("--out", default="recordings", metavar="DIR", help="recording directory (default ./recordings)")
     p.add_argument("--seed", type=int, default=None, help="random seed for --simulate")
-    return p.parse_args(argv)
+    args = p.parse_args(argv)
+    if args.arithmetic and args.gradcpt:
+        p.error("choose either --arithmetic or --gradcpt")
+    if args.record_channel is not None and args.record_channel < 1:
+        p.error("--record-channel must be at least 1")
+    if args.quality_config:
+        import json
+        from pathlib import Path
+        from .attention_protocol import QualityConfig
+        try:
+            args.attention_quality_config = QualityConfig(**json.loads(Path(args.quality_config).read_text()))
+        except (OSError, ValueError, TypeError) as exc:
+            p.error(f"invalid quality config: {exc}")
+    return args
 
 
 def build_source(args):
@@ -48,10 +64,14 @@ def main(argv=None) -> int:
     window = MainWindow(build_source(args), out_dir=args.out, notch=args.notch or None,
                         skip_impedance=args.skip_impedance)
     app.aboutToQuit.connect(window.close)
+    window.attention_quality_config = getattr(args, "attention_quality_config", None)
+    window.attention_record_channel = args.record_channel
     window.show()
     window.start()
     if args.arithmetic:
         window.open_arithmetic()
+    if args.gradcpt:
+        window.open_attention()
 
     # Let Ctrl+C in the terminal close the app cleanly: Python only sees signals while the interpreter runs.
     signal.signal(signal.SIGINT, lambda *_: app.quit())

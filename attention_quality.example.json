@@ -1,0 +1,11 @@
+{
+  "version": "provisional-1",
+  "flat_std_uv": 0.01,
+  "swing_peak_to_peak_uv": 500.0,
+  "rail_fraction": 0.99,
+  "frame_gap_s": 0.05,
+  "min_valid_responses": 100,
+  "max_interpolation_gap_trials": 10,
+  "preview_s": 10.0,
+  "stale_s": 1.0
+}

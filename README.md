@@ -47,6 +47,20 @@ the `PackNum` step histogram, and that amplitudes are plausible µV.
 
 ### Run
 
+For attention collection, run:
+
+```sh
+.venv/bin/python run_visualizer.py --gradcpt
+.venv/bin/python run_visualizer.py --gradcpt --simulate  # synthetic EEG only
+```
+
+This adds a local electrode/quality check, 2-minute practice and 8-minute city/mountain
+task, followed by offline behavioral labels and EEG quality annotations. New sessions go
+to Git-ignored `participant_data/`. **Export session…** creates a local ZIP with device
+identifiers removed from JSON metadata. See [ATTENTION_PROTOCOL.md](ATTENTION_PROTOCOL.md)
+for the collection procedure, file formats, timing limitations, thresholds and validation.
+The safe launcher also avoids unrelated root-level scripts shadowing Python standard modules.
+
 ```sh
 .venv/bin/python -m brainviz --simulate        # no headset
 .venv/bin/python -m brainviz                   # real device

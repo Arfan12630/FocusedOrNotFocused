@@ -1,0 +1,29 @@
+{
+  "source": "https://github.com/manybrainsproject/TestMyBrainCodeRepo",
+  "commit": "ec09ea0d35779bb39997131313dfd1380ee34922",
+  "stimuli_license": "CC-BY-SA-4.0",
+  "attribution": "TMB GradCPT City/Mountain Images by Esterman & DeGutis",
+  "sha256": {
+    "city1.png": "9a52eae067677548318b29127195192c1ea18b81622d7e8a3784f510e3152778",
+    "city10.png": "cd23611f5a2c5e7bbe189e809f829e4b7949f5f8f562edfa35ff354944408b92",
+    "city2.png": "72c8cb76cbe4abe28d57f5dce675cb1a51503ed4e111dde478dbad069ace40e5",
+    "city3.png": "7d81b06338be5027554939843a39a15c1faa05dce93aad5823af2d11e5695d43",
+    "city4.png": "5648cf0bb8f1045d786bef4404a3120f4c347dc5a9e8e02258ddb1db6931deb7",
+    "city5.png": "efae13c90877d3d61a1650aed0c56ff189920a02644a124c8561e8e05f0f4420",
+    "city6.png": "7bbc10b3992bb4bfa98b8f76cdd4c724a09b3ffb7d564b0e5e604551fe947853",
+    "city7.png": "7289778719a485a185e7431958f7cb1f0d8bc28307ef01a0bebd7b8b7f6b05d9",
+    "city8.png": "c52b36458948e3389a06c567fb058a24dd25099a78bb989aad4d6f04dcb9852c",
+    "city9.png": "9c538d8dee501b9367ca5edbd9caaa180f2769f8fba5e5c705fde9a4bbdb4aef",
+    "mountain1.png": "5c53e40c0fff9131d282a8b6aefff0f28d505c2e223958bb21d11228d406719d",
+    "mountain10.png": "0396a295b3d543f9dd111d1c80363a71dcc62adc33016810aa1beff84cc0abd2",
+    "mountain2.png": "64bc3cda26feeb4f0490c55a9175c16fe27867d5305138e95d08211d8c234d57",
+    "mountain3.png": "e8d3afe89fc26bf98deacfefbe865fa28a01ebc999ac4bef445c7887a1975385",
+    "mountain4.png": "889386078739fb65a69300879fa3197445020ac414c51953718646d3683951a1",
+    "mountain5.png": "a5d9cef9e1db8a0599b39149531dca9d4b6347668d3f8fc2bab83d6e047dc110",
+    "mountain6.png": "aed705693c211c32a2590082fc77ba35507e7e9daa6d170508341a02cb22c4ef",
+    "mountain7.png": "65cce503632ce652462ea39443a050b19c44a738239dd66e531aeee3711f7f65",
+    "mountain8.png": "dd542c806c1bb9ed1ce10029e6bb349b49805f3c2945daf5fe6338e1dc5de478",
+    "mountain9.png": "4bdaafc8a3e032b9ff14cf9b41c334d6390ed9ce4b95c18bc5b3b8b1d3f79aa9",
+    "scrambled.png": "54dbd9a141c0ddde035a12c7e55ebddf3f773f95096b579b4bd22ea94f728a7e"
+  }
+}

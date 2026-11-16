@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import csv
 import json
 import queue
 import threading
@@ -19,12 +20,15 @@ CSV_NOTE = (
 
 class Recorder:
     def __init__(self, out_dir, labels: list[str], fs: float, meta: dict | None = None,
-                 simulated: bool = False) -> None:
+                 simulated: bool = False, packet_timing: bool = False) -> None:
         self.out_dir = Path(out_dir)
         self.labels = list(labels)
         self.fs = fs
         self.meta = dict(meta or {})
         self.simulated = simulated
+        self.packet_timing = packet_timing
+        self.packet_path: Path | None = None
+        self._state_lock = threading.Lock()
         self.path: Path | None = None
         self.sidecar: Path | None = None
         self.samples_written = 0
@@ -41,11 +45,19 @@ class Recorder:
         stamp = time.strftime("%Y%m%d-%H%M%S") + ("-SIM" if self.simulated else "")
         path = self.out_dir / f"{stamp}.csv"
         n = 2
-        while path.exists():
-            path = self.out_dir / f"{stamp}-{n}.csv"
-            n += 1
+        while True:
+            try:
+                with path.open("x"):
+                    pass
+                break
+            except FileExistsError:
+                path = self.out_dir / f"{stamp}-{n}.csv"
+                n += 1
         self.path = path
         self.sidecar = path.with_suffix(".json")
+        if self.packet_timing:
+            self.packet_path = path.with_suffix(".packets.jsonl")
+            self.meta["packet_timing_file"] = self.packet_path.name
         self._started_at = dt.datetime.now().astimezone()
         self._t0 = time.monotonic()
         self._write_sidecar({"state": "recording"})
@@ -54,17 +66,25 @@ class Recorder:
         self._thread.start()
         return path
 
-    def push(self, pack, marker, uv, host_time: float) -> None:
-        if self._running:
-            self._q.put((pack, marker, uv, host_time))
+    def push(self, pack, marker, uv, host_time: float, host_monotonic: float | None = None) -> None:
+        if len(uv) == 0:
+            return
+        with self._state_lock:
+            if self._running:
+                self._q.put((pack, marker, uv, host_time,
+                             time.perf_counter() if host_monotonic is None else host_monotonic))
 
     def stop(self, extra: dict | None = None) -> dict:
         """Flush, close and finalise the sidecar. Returns a summary dict."""
         if self._thread is None:
             return {}
-        self._running = False
-        self._q.put(None)
+        with self._state_lock:
+            self._running = False
+            self._q.put(None)
         self._thread.join(timeout=10)
+        if self._thread.is_alive():
+            self.error = "Writer did not finish within 10 seconds; files may be incomplete"
+            raise RuntimeError(self.error)
         self._thread = None
         duration = time.monotonic() - self._t0
         summary = {
@@ -102,7 +122,10 @@ class Recorder:
         tmp.replace(self.sidecar)
 
     def _writer(self) -> None:
+        packets = None
         try:
+            if self.packet_path is not None:
+                packets = self.packet_path.open("x", buffering=1)
             with open(self.path, "w", newline="", buffering=1 << 16) as f:
                 f.write(",".join(_csv_field(c) for c in
                                  ["sample_index", "host_time_unix", "pack_num", "marker", *self.labels]) + "\n")
@@ -112,8 +135,12 @@ class Recorder:
                     item = self._q.get()
                     if item is None:
                         break
-                    pack, marker, uv, host_time = item
+                    pack, marker, uv, host_time, host_monotonic = item
                     n = len(uv)
+                    if packets is not None:
+                        packets.write(json.dumps({"sample_start": index, "sample_count": n,
+                                                  "host_time_unix": host_time,
+                                                  "host_monotonic_s": host_monotonic}) + "\n")
                     lines = []
                     for i in range(n):
                         row = ",".join(f"{v:.3f}" for v in uv[i])
@@ -127,15 +154,21 @@ class Recorder:
         except Exception as exc:  # disk full, permissions, ...
             self.error = f"{type(exc).__name__}: {exc}"
             self._running = False
+        finally:
+            if packets is not None:
+                packets.close()
 
 
 def _csv_field(text: str) -> str:
-    return f'"{text}"' if any(c in text for c in ',"\n') else text
+    return '"' + text.replace('"', '""') + '"' if any(c in text for c in ',"\n') else text
 
 
 def read_csv(path) -> tuple[list[str], np.ndarray]:
     """Load a recording (header names, data array). Used by tests and for quick analysis."""
     path = Path(path)
     with open(path) as f:
-        header = f.readline().rstrip("\n").split(",")
-    return header, np.loadtxt(path, delimiter=",", skiprows=1, ndmin=2)
+        header = next(csv.reader(f))
+        if not f.readline():
+            return header, np.empty((0, len(header)))
+    data = np.loadtxt(path, delimiter=",", skiprows=1, ndmin=2)
+    return header, data if data.size else np.empty((0, len(header)))
